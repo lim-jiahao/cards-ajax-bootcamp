@@ -1,166 +1,204 @@
-/*
- * ========================================================
- * ========================================================
- * ========================================================
- * ========================================================
- *
- *                  Card Deck Functions
- *
- * ========================================================
- * ========================================================
- * ========================================================
- */
+import pkg from 'sequelize';
 
-// get a random index from an array given it's size
-const getRandomIndex = function (size) {
-  return Math.floor(Math.random() * size);
-};
+const { Op } = pkg;
 
-// cards is an array of card objects
-const shuffleCards = function (cards) {
-  let currentIndex = 0;
-
-  // loop over the entire cards array
-  while (currentIndex < cards.length) {
-    // select a random position from the deck
-    const randomIndex = getRandomIndex(cards.length);
-
-    // get the current card in the loop
-    const currentItem = cards[currentIndex];
-
-    // get the random card
-    const randomItem = cards[randomIndex];
-
-    // swap the current card and the random card
-    cards[currentIndex] = randomItem;
-    cards[randomIndex] = currentItem;
-
-    currentIndex += 1;
+// Shuffle an array of cards
+const shuffleCards = (cards) => {
+  // Loop over the card deck array once
+  for (let currentIndex = 0; currentIndex < cards.length; currentIndex += 1) {
+    // Select a random index in the deck
+    const randomIndex = Math.floor(Math.random() * cards.length);
+    // Select the card that corresponds to randomIndex
+    const randomCard = cards[randomIndex];
+    // Select the card that corresponds to currentIndex
+    const currentCard = cards[currentIndex];
+    // Swap positions of randomCard and currentCard in the deck
+    cards[currentIndex] = randomCard;
+    cards[randomIndex] = currentCard;
   }
-
-  // give back the shuffled deck
+  // Return the shuffled deck
   return cards;
 };
 
-const makeDeck = function () {
-  // create the empty deck at the beginning
-  const deck = [];
+const makeDeck = () => {
+  // Initialise an empty deck array
+  const newDeck = [];
+  // Initialise an array of the 4 suits in our deck. We will loop over this array.
+  const suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+  const suitSymbols = ['♥️', '♦', '♣️', '♠️'];
 
-  const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-
-  let suitIndex = 0;
-  while (suitIndex < suits.length) {
-    // make a variable of the current suit
+  // Loop over the suits array
+  for (let suitIndex = 0; suitIndex < suits.length; suitIndex += 1) {
+    // Store the current suit in a variable
     const currentSuit = suits[suitIndex];
+    const currentSymbol = suitSymbols[suitIndex];
 
-    // loop to create all cards in this suit
-    // rank 1-13
-    let rankCounter = 1;
-    while (rankCounter <= 13) {
-      let cardName = rankCounter;
+    // Loop from 1 to 13 to create all cards for a given suit
+    for (let rankCounter = 1; rankCounter <= 13; rankCounter += 1) {
+      // By default, the card name is the same as rankCounter
+      let cardName = `${rankCounter}`;
+      let displayName = cardName;
+      const colour = suitIndex <= 1 ? 'red' : 'black';
 
-      // 1, 11, 12 ,13
-      if (cardName === 1) {
-        cardName = 'ace';
-      } else if (cardName === 11) {
-        cardName = 'jack';
-      } else if (cardName === 12) {
-        cardName = 'queen';
-      } else if (cardName === 13) {
-        cardName = 'king';
+      // If rank is 1, 11, 12, or 13, set cardName to the ace or face card's name
+      if (cardName === '1') {
+        cardName = 'Ace';
+        displayName = 'A';
+      } else if (cardName === '11') {
+        cardName = 'Jack';
+        displayName = 'J';
+      } else if (cardName === '12') {
+        cardName = 'Queen';
+        displayName = 'Q';
+      } else if (cardName === '13') {
+        cardName = 'King';
+        displayName = 'K';
       }
 
-      // make a single card object variable
+      // Create a new card with the current name, suit, and rank
       const card = {
         name: cardName,
         suit: currentSuit,
         rank: rankCounter,
+        suitSymbol: currentSymbol,
+        displayName,
+        colour,
       };
 
-      // add the card to the deck
-      deck.push(card);
-
-      rankCounter += 1;
+      // Add the new card to the deck
+      newDeck.push(card);
     }
-    suitIndex += 1;
   }
 
-  return deck;
+  // Return the completed card deck
+  return newDeck;
 };
-
-/*
- * ========================================================
- * ========================================================
- * ========================================================
- * ========================================================
- *
- *                  Controller Functions
- *
- * ========================================================
- * ========================================================
- * ========================================================
- */
 
 export default function initGamesController(db) {
   // render the main page
-  const index = (request, response) => {
-    response.render('games/index');
+  const index = (req, res) => {
+    res.render('games/index');
   };
 
   // create a new game. Insert a new row in the DB.
-  const create = async (request, response) => {
+  const create = async (req, res) => {
     // deal out a new shuffled deck for this game.
     const cardDeck = shuffleCards(makeDeck());
-    const playerHand = [cardDeck.pop(), cardDeck.pop()];
+    const player1Cards = [];
+    const player2Cards = [];
+    const gameInProgress = false;
 
     const newGame = {
       gameState: {
         cardDeck,
-        playerHand,
+        player1Cards,
+        player2Cards,
+        gameInProgress,
       },
+      isGameOver: false,
     };
 
     try {
       // run the DB INSERT query
       const game = await db.Game.create(newGame);
+      const user1 = await db.User.findOne({
+        where: {
+          name: req.body.user,
+        },
+      });
+      const [usersInGame] = await db.sequelize.query('SELECT DISTINCT user_id FROM games_users gu INNER JOIN games g ON gu.game_id = g.id WHERE NOT g.is_game_over;');
+      const list = usersInGame.map((user) => user.user_id);
+      const user2 = await db.User.findAll({
+        where: {
+          id: { [Op.notIn]: list, [Op.ne]: user1.id },
+        },
+        order: db.sequelize.random(),
+        limit: 1,
+      });
+
+      await game.addUser(user1.id);
+      await game.addUser(user2[0].id);
 
       // send the new game back to the user.
       // dont include the deck so the user can't cheat
-      response.send({
+      res.send({
         id: game.id,
-        playerHand: game.gameState.playerHand,
+        gameInProgress: game.gameInProgress,
+        player1: user1,
+        player2: user2[0],
       });
     } catch (error) {
-      response.status(500).send(error);
+      res.status(500).send(error);
     }
   };
 
   // deal two new cards from the deck.
-  const deal = async (request, response) => {
+  const deal = async (req, res) => {
     try {
       // get the game by the ID passed in the request
-      const game = await db.Game.findByPk(request.params.id);
+      const { gameId, playerId } = req.params;
+      const game = await db.Game.findByPk(gameId);
+      const player1Cards = [...game.gameState.player1Cards];
+      const player2Cards = [...game.gameState.player2Cards];
 
-      // make changes to the object
-      const playerHand = [game.gameState.cardDeck.pop(), game.gameState.cardDeck.pop()];
+      if (Number(playerId) === 1) {
+        player1Cards.push(game.gameState.cardDeck.pop());
+      } else {
+        player2Cards.push(game.gameState.cardDeck.pop());
+      }
+
+      const players = await game.getUsers();
+      let isGameOver = false;
+
+      if (player1Cards.length === 5 && player2Cards.length === 5) isGameOver = true;
 
       // update the game with the new info
+      // console.log('here');
+      // console.log(req.body);
       await game.update({
         gameState: {
           cardDeck: game.gameState.cardDeck,
-          playerHand,
+          player1Cards,
+          player2Cards,
+          gameInProgress: true,
         },
-
+        isGameOver,
       });
+      // console.log(game);
 
       // send the updated game back to the user.
       // dont include the deck so the user can't cheat
-      response.send({
+      res.send({
         id: game.id,
-        playerHand: game.gameState.playerHand,
+        player1Cards: game.gameState.player1Cards,
+        player2Cards: game.gameState.player2Cards,
+        gameInProgress: game.gameState.gameInProgress,
+        player1: players[0],
+        player2: players[1],
       });
     } catch (error) {
-      response.status(500).send(error);
+      console.log('error');
+      res.status(500).send(error);
+    }
+  };
+
+  const show = async (req, res) => {
+    const { gameId } = req.params;
+    try {
+      const game = await db.Game.findByPk(gameId);
+      const players = await game.getUsers();
+
+      res.send({
+        id: game.id,
+        player1Cards: game.gameState.player1Cards,
+        player2Cards: game.gameState.player2Cards,
+        gameInProgress: game.gameState.gameInProgress,
+        player1: players[0],
+        player2: players[1],
+      });
+    } catch (error) {
+      console.log('error');
+      res.status(500).send(error);
     }
   };
 
@@ -170,5 +208,6 @@ export default function initGamesController(db) {
     deal,
     create,
     index,
+    show,
   };
 }

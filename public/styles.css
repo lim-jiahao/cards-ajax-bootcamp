@@ -1,0 +1,96 @@
+body {
+  background-color: pink;
+}
+
+#container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 1200px;
+  margin: auto;
+  flex-wrap: wrap;
+}
+
+#player-1,
+#player-2 {
+  position: relative;
+  display: flex;
+  width: 49%;
+  justify-content: center;
+  align-items: center;
+  height: 250px;
+  border: solid 2px black;
+  background-color: powderblue;
+}
+
+#button-player-1,
+#button-player-2 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 10px;
+  text-align: center;
+  width: 100px;
+}
+
+.card {
+  margin: 8px;
+  padding: 10px;
+  background-color: white;
+  width: 50px;
+  height: 70px;
+  text-align: center;
+  border: solid 2px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.suit {
+  margin: 5px;
+  font-size: 20px;
+}
+
+.name {
+  margin: 5px;
+  font-size: 24px;
+  font-weight: bold;
+  font-family: sans-serif;
+}
+
+.red {
+  color: red;
+}
+
+.black {
+  color: black;
+}
+
+.high {
+  border: solid 3px limegreen;
+}
+
+.low {
+  border: solid 3px crimson;
+}
+
+.output {
+  text-align: center;
+  padding-top: 10px;
+}
+
+#warning,
+#warning2 {
+  color: red;
+  font-weight: bold;
+}
+
+#login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 100px;
+  /* display: none; */
+}

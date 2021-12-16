@@ -9,6 +9,10 @@ export default function initGameModel(sequelize, DataTypes) {
     gameState: {
       type: DataTypes.JSON,
     },
+    isGameOver: {
+      allowNull: false,
+      type: DataTypes.BOOLEAN,
+    },
     createdAt: {
       allowNull: false,
       type: DataTypes.DATE,

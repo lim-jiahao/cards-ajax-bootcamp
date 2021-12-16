@@ -1,3 +1,5 @@
+const sequelize = require('sequelize');
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('games', {
@@ -13,6 +15,10 @@ module.exports = {
         // For the purposes of this project, where the focus is AJAX, let's store
         // all game state (e.g. cardDeck, playerHand) in the gameState JSON column.
         type: Sequelize.JSON,
+      },
+      is_game_over: {
+        allowNull: false,
+        type: sequelize.BOOLEAN,
       },
       created_at: {
         allowNull: false,
