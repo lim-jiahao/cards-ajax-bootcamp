@@ -1,4 +1,4 @@
-export default function gameModel(sequelize, DataTypes) {
+export default function initGameModel(sequelize, DataTypes) {
   return sequelize.define('game', {
     id: {
       allowNull: false,
